@@ -1,3 +1,4 @@
+from django.shortcuts import render
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import joblib
@@ -5,6 +6,9 @@ import numpy as np
 from .validators import validate_input_data, preprocess_input_data
 
 model = joblib.load('performance/model.pkl')
+
+def index(request):
+    return render(request, 'performance/index.html')
 
 @api_view(['POST'])
 def predict_performance(request):

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Performance Predictor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'performance/style.css' %}" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Academic Pulse</h1>
+        <p class="subtitle">AI-Powered Performance Prediction</p>
+
+        <form id="predictionForm">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="hours_studied">Hours Studied</label>
+            <input
+              type="number"
+              id="hours_studied"
+              name="hours_studied"
+              step="0.5"
+              placeholder="e.g., 7.5"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="previous_scores">Previous Scores (0-100)</label>
+            <input
+              type="number"
+              id="previous_scores"
+              name="previous_scores"
+              placeholder="e.g., 85"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="sleep_hours">Sleep Hours</label>
+            <input
+              type="number"
+              id="sleep_hours"
+              name="sleep_hours"
+              step="0.5"
+              placeholder="e.g., 8"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="sample_papers">Sample Papers Practiced</label>
+            <input
+              type="number"
+              id="sample_papers"
+              name="sample_papers"
+              placeholder="e.g., 5"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-group">
+              <input
+                type="checkbox"
+                id="extracurricular"
+                name="extracurricular"
+              />
+              <span>Participated in Extracurricular Activities</span>
+            </label>
+          </div>
+
+          <button type="submit" id="submitBtn">
+            Predict Performance Index
+          </button>
+        </form>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div id="resultContainer" class="result-container">
+          <p class="result-label">Predicted Index</p>
+          <div id="resultValue" class="result-value">0.0</div>
+          <p class="subtitle">
+            A higher index indicates better expected performance.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById("predictionForm");
+      const submitBtn = document.getElementById("submitBtn");
+      const resultContainer = document.getElementById("resultContainer");
+      const resultValue = document.getElementById("resultValue");
+      const errorMessage = document.getElementById("errorMessage");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        // Reset UI
+        errorMessage.style.display = "none";
+        resultContainer.style.display = "none";
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Analyzing...";
+
+        const formData = {
+          hours_studied: parseFloat(
+            document.getElementById("hours_studied").value,
+          ),
+          previous_scores: parseInt(
+            document.getElementById("previous_scores").value,
+          ),
+          sleep_hours: parseFloat(document.getElementById("sleep_hours").value),
+          sample_papers: parseInt(
+            document.getElementById("sample_papers").value,
+          ),
+          extracurricular: document.getElementById("extracurricular").checked,
+        };
+
+        try {
+          const response = await fetch("/api/predict/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": document.querySelector(
+                "[name=csrfmiddlewaretoken]",
+              ).value,
+            },
+            body: JSON.stringify(formData),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            resultValue.textContent = data.performance_index;
+            resultContainer.style.display = "block";
+            resultContainer.scrollIntoView({ behavior: "smooth" });
+          } else {
+            // Show validation errors
+            let errors = "<strong>Validation Error:</strong><br><ul>";
+            if (data.details && Array.isArray(data.details)) {
+              data.details.forEach((err) => {
+                errors += `<li>${err}</li>`;
+              });
+            } else if (data.error) {
+              errors += `<li>${data.error}</li>`;
+            } else {
+              errors += `<li>Something went wrong. Please check your inputs.</li>`;
+            }
+            errors += "</ul>";
+            errorMessage.innerHTML = errors;
+            errorMessage.style.display = "block";
+          }
+        } catch (error) {
+          errorMessage.innerHTML =
+            "<strong>Connection Error:</strong> Could not reach the server.";
+          errorMessage.style.display = "block";
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Predict Performance Index";
+        }
+      });
+    </script>
+  </body>
+</html>
